@@ -1,13 +1,5 @@
 import torch
-import torch.nn as nn
-from torch.autograd import Variable
-import torch.optim as optim
 from torchvision import datasets,  transforms
-import argparse
-
-import model as M
-import util as U
-import time
     
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
