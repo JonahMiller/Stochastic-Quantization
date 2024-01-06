@@ -26,7 +26,7 @@ class FWN:
         pass
 
 
-class BinarizeOp:
+class BWN:
     def __init__(self,model):
         count_targets = 0
         for m in model.modules():
@@ -78,7 +78,7 @@ class BinarizeOp:
             self.target_modules[index].data.copy_(self.saved_params[index])
 
 class SQ_BWN_default_layer:
-    def __init__(self, model):
+    def __init__(self, model, prob_type):
         count_targets = 0
         for m in model.modules():
             if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
@@ -92,8 +92,8 @@ class SQ_BWN_default_layer:
                 tmp = m.weight.data.clone()
                 self.saved_params.append(tmp) #tensor
                 self.target_modules.append(m.weight) #Parameter
+        self.prob_type = prob_type
 
-    
     def SaveWeights(self):
         for index in range(self.num_of_params):
             self.saved_params[index].copy_(self.target_modules[index].data)
@@ -106,7 +106,7 @@ class SQ_BWN_default_layer:
             f.append(f_temp)
             Q.append(Q_temp)
         f = torch.FloatTensor(f).cuda()
-        p = f/f.sum()
+        p = self.prob(f)
         r_it = int(r*self.num_of_params)
         index_used = []
         for _ in range(r_it):
@@ -119,6 +119,17 @@ class SQ_BWN_default_layer:
             p[j] = 0
             index_used.append(j)
             self.target_modules[j].data = Q[j].data
+
+    def prob(self, f):
+        if self.prob_type == "constant":
+            prob = torch.full(f.size(), 1/f.nelement())
+        elif self.prob_type == "linear":
+            prob = f/f.sum()
+        elif self.prob_type == "softmax":
+            prob = torch.exp(f)/(torch.exp(f).sum())
+        elif self.prob_type == "sigmoid":
+            prob = 1/(1 + torch.exp(-f))
+        return prob
 
     def BinarizeWeights(self):
         for index in range(self.num_of_params):
@@ -167,6 +178,7 @@ class SQ_BWN_default_layer:
         for index in range(self.num_of_params):
             self.target_modules[index].data.copy_(self.saved_params[index])
 
+
 class SQ_BWN_custom_layer:
     def __init__(self, model, prob_type, e_type):
         count_targets = 0
@@ -184,8 +196,7 @@ class SQ_BWN_custom_layer:
                 self.target_modules.append(m.weight) #Parameter
         self.prob_type = prob_type
         self.e_type = e_type
-    
-    
+
     def SaveWeights(self):
         for index in range(self.num_of_params):
             self.saved_params[index].copy_(self.target_modules[index].data)
@@ -399,7 +410,7 @@ class SQ_BWN_custom_filter:
             self.target_modules[index].data.copy_(self.saved_params[index])
 
 
-class TernarizeOp:
+class TWN:
     def __init__(self,model):
         model = model.to(device)
         count_targets = 0
@@ -463,7 +474,246 @@ class TernarizeOp:
             self.target_modules[index].data.copy_(self.saved_params[index])
 
 
-class SQ_TernarizeOp:
+class SQ_TWN_default_layer:
+    def __init__(self, model, prob_type):
+        count_targets = 0
+        for m in model.modules():
+            if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
+                count_targets += 1
+        self.ternarize_range = np.linspace(0,count_targets-1,count_targets).astype('int').tolist()
+        self.num_of_params = len(self.ternarize_range)
+        self.saved_params = []
+        self.target_modules = []
+        for m in model.modules():
+            if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
+                tmp = m.weight.data.clone()
+                self.saved_params.append(tmp) #tensor
+                self.target_modules.append(m.weight) #Parameter
+        self.prob_type = prob_type
+
+    def SaveWeights(self):
+        for index in range(self.num_of_params):
+            self.saved_params[index].copy_(self.target_modules[index].data)
+
+    def SQ_TernarizeWeights(self, r):
+        f = []
+        Q = []
+        for index in range(self.num_of_params):
+            f_temp, Q_temp = self.Ternarize(self.target_modules[index].data)
+            f.append(f_temp)
+            Q.append(Q_temp)
+        f = torch.FloatTensor(f).cuda()
+        p = self.prob(f)
+        r_it = int(r*self.num_of_params)
+        index_used = []
+        for _ in range(r_it):
+            p_norm = p/p.sum()
+            v = torch.rand(1).cuda()
+            s, j = p_norm[0], 0
+            while s < v and j + 1 < len(p):
+                j += 1
+                s += p_norm[j]
+            p[j] = 0
+            index_used.append(j)
+            self.target_modules[j].data = Q[j].data
+
+    def prob(self, f):
+        if self.prob_type == "constant":
+            prob = torch.full(f.size(), 1/f.nelement())
+        elif self.prob_type == "linear":
+            prob = f/f.sum()
+        elif self.prob_type == "softmax":
+            prob = torch.exp(f)/(torch.exp(f).sum())
+        elif self.prob_type == "sigmoid":
+            prob = 1/(1 + torch.exp(-f))
+        return prob
+
+    def TernarizeWeights(self):
+        for index in range(self.num_of_params):
+            self.target_modules[index].data = self.No_SQ_Ternarize(self.target_modules[index].data)
+    
+    def Ternarize(self, tensor):
+        f = torch.empty(tensor.size()[0])
+        Q = torch.empty(tensor.size())
+        delta = self.Delta(tensor)
+        alpha = self.Alpha(tensor,delta)
+        for i in range(tensor.size()[0]):
+            w = tensor[i]
+            pos_one = (w > delta[i]).float()
+            neg_one = (w < -delta[i]).float()
+            Q[i] = alpha[i]*(pos_one - neg_one)
+            e = (w - Q[i]).abs().sum()/w.abs().sum()
+            if self.e_type == "one_minus_invert":
+                f[i] = 1/e + 10**(-7)
+            else:
+                f[i] = e
+        return f, Q
+    
+    def No_SQ_Ternarize(self,tensor):
+        tensor = tensor.to("cpu")
+        output = torch.empty(tensor.size())
+        delta = self.Delta(tensor)
+        alpha = self.Alpha(tensor,delta)
+        for i in range(tensor.size()[0]):
+            pos_one = (tensor[i] > delta[i]).float()
+            neg_one = (tensor[i] < -delta[i]).float()
+            output[i] = alpha[i]*(pos_one - neg_one)
+        return output.to(device)
+
+    def Alpha(self,tensor,delta):
+        alpha = torch.empty(tensor.size()[0], 1)
+        for i in range(tensor.size()[0]):
+            absvalue = tensor[i].abs()
+            truth_value = (absvalue > delta[i]).float()
+            count = truth_value.sum()
+            abssum = (absvalue*truth_value).sum()
+            alpha[i] = abssum/count
+        return alpha
+
+    def Delta(self,tensor):
+        n = tensor[0].nelement()
+        if(len(tensor.size()) == 4):     # convolution layer
+            delta = 0.7 * tensor.norm(1,3).sum(2).sum(1).div(n)
+        elif(len(tensor.size()) == 2):   # fc layer
+            delta = 0.7 * tensor.norm(1,1).div(n)
+        return delta
+    
+    def Quantization(self, r):
+        self.SaveWeights()
+        if r != 1:
+            self.SQ_TernarizeWeights(r)
+        else:
+            self.TernarizeWeights()
+    
+    def Restore(self):
+        for index in range(self.num_of_params):
+            self.target_modules[index].data.copy_(self.saved_params[index])
+
+
+class SQ_TWN_custom_layer:
+    def __init__(self, model, prob_type, e_type):
+        count_targets = 0
+        for m in model.modules():
+            if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
+                count_targets += 1
+        self.ternarize_range = np.linspace(0,count_targets-1,count_targets).astype('int').tolist()
+        self.num_of_params = len(self.ternarize_range)
+        self.saved_params = []
+        self.target_modules = []
+        for m in model.modules():
+            if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
+                tmp = m.weight.data.clone()
+                self.saved_params.append(tmp) #tensor
+                self.target_modules.append(m.weight) #Parameter
+        self.prob_type = prob_type
+        self.e_type = e_type
+
+    def SaveWeights(self):
+        for index in range(self.num_of_params):
+            self.saved_params[index].copy_(self.target_modules[index].data)
+
+    def SQ_TernarizeWeights(self, r):
+        f = []
+        Q = []
+        for index in range(self.num_of_params):
+            f_temp, Q_temp = self.Ternarize(self.target_modules[index].data)
+            f.append(f_temp)
+            Q.append(Q_temp)
+        f = torch.FloatTensor(f).cuda()
+        p = self.prob(f)
+        r_it = int(r*self.num_of_params)
+        index_used = []
+        for _ in range(r_it):
+            p_norm = p/p.sum()
+            v = torch.rand(1).cuda()
+            s, j = p_norm[0], 0
+            while s < v and j + 1 < len(p):
+                j += 1
+                s += p_norm[j]
+            p[j] = 0
+            index_used.append(j)
+        for index in range(self.num_of_params):
+            if index not in index_used:
+                self.target_modules[index].data = Q[index].data
+
+    def prob(self, f):
+        if self.prob_type == "constant":
+            prob = torch.full(f.size(), 1/f.nelement())
+        elif self.prob_type == "linear":
+            prob = f/f.sum()
+        elif self.prob_type == "softmax":
+            prob = torch.exp(f)/(torch.exp(f).sum())
+        elif self.prob_type == "sigmoid":
+            prob = 1/(1 + torch.exp(-f))
+        
+        if self.e_type == "one_minus_invert":
+            return 1 - prob
+        elif self.e_type == "default":
+            return prob
+
+    def TernarizeWeights(self):
+        for index in range(self.num_of_params):
+            self.target_modules[index].data = self.No_SQ_Ternarize(self.target_modules[index].data)
+    
+    def Ternarize(self, tensor):
+        f = torch.empty(tensor.size()[0])
+        Q = torch.empty(tensor.size())
+        delta = self.Delta(tensor)
+        alpha = self.Alpha(tensor,delta)
+        for i in range(tensor.size()[0]):
+            w = tensor[i]
+            pos_one = (w > delta[i]).float()
+            neg_one = (w < -delta[i]).float()
+            Q[i] = alpha[i]*(pos_one - neg_one)
+            e = (w - Q[i]).abs().sum()/w.abs().sum()
+            if self.e_type == "one_minus_invert":
+                f[i] = 1/e + 10**(-7)
+            else:
+                f[i] = e
+        return f, Q
+    
+    def No_SQ_Ternarize(self,tensor):
+        tensor = tensor.to("cpu")
+        output = torch.empty(tensor.size())
+        delta = self.Delta(tensor)
+        alpha = self.Alpha(tensor,delta)
+        for i in range(tensor.size()[0]):
+            pos_one = (tensor[i] > delta[i]).float()
+            neg_one = (tensor[i] < -delta[i]).float()
+            output[i] = alpha[i]*(pos_one - neg_one)
+        return output.to(device)
+
+    def Alpha(self,tensor,delta):
+        alpha = torch.empty(tensor.size()[0], 1)
+        for i in range(tensor.size()[0]):
+            absvalue = tensor[i].abs()
+            truth_value = (absvalue > delta[i]).float()
+            count = truth_value.sum()
+            abssum = (absvalue*truth_value).sum()
+            alpha[i] = abssum/count
+        return alpha
+
+    def Delta(self,tensor):
+        n = tensor[0].nelement()
+        if(len(tensor.size()) == 4):     # convolution layer
+            delta = 0.7 * tensor.norm(1,3).sum(2).sum(1).div(n)
+        elif(len(tensor.size()) == 2):   # fc layer
+            delta = 0.7 * tensor.norm(1,1).div(n)
+        return delta
+    
+    def Quantization(self, r):
+        self.SaveWeights()
+        if r != 1:
+            self.SQ_TernarizeWeights(r)
+        else:
+            self.TernarizeWeights()
+    
+    def Restore(self):
+        for index in range(self.num_of_params):
+            self.target_modules[index].data.copy_(self.saved_params[index])
+
+
+class SQ_TWN_custom_filter:
     def __init__(self, model, prob_type, e_type):
         count_targets = 0
         for m in model.modules():

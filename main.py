@@ -61,17 +61,21 @@ def main():
     if args.quant == "fwn":
         quantize = U.FWN(model)
     elif args.quant == "bwn":
-        quantize = U.BinarizeOp(model)
+        quantize = U.BWN(model)
     elif args.quant == "sq_bwn_default_layer":
-        quantize = U.SQ_BWN_default_layer(model)
+        quantize = U.SQ_BWN_default_layer(model, args.prob_type)
     elif args.quant == "sq_bwn_custom_layer":
         quantize = U.SQ_BWN_custom_layer(model, args.prob_type, args.e_type)
     elif args.quant == "sq_bwn_custom_filter":
         quantize = U.SQ_BWN_custom_filter(model, args.prob_type, args.e_type)
     elif args.quant == "twn":
-        quantize = U.TernarizeOp(model)
-    elif args.quant == "sq_twn":
-        quantize = U.SQ_TernarizeOp(model, args.prob_type, args.e_type)
+        quantize = U.TWN(model)
+    elif args.quant == "sq_twn_default_layer":
+        quantize = U.SQ_TWN_default_layer(model, args.prob_type)
+    elif args.quant == "sq_twn_custom_layer":
+        quantize = U.SQ_TWN_custom_layer(model, args.prob_type, args.e_type)
+    elif args.quant == "sq_twn_custom_filter":
+        quantize = U.SQ_TWN_custom_filter(model, args.prob_type, args.e_type)
     elif args.quant == "tnn":
         quantize = U.Trained_TernarizeOp(model)
     elif args.quant == "sq_tnn":
@@ -98,10 +102,6 @@ def main():
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
                                                 step_size=30,
                                                 gamma=0.1)
-
-    # scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
-    #                                             step_size=10,
-    #                                             gamma=0.1)
 
     start = time.time()
 
@@ -139,22 +139,22 @@ def main():
         if acc > best_acc:
             best_acc = acc
             best_epoch = epoch_index
-            # if args.quant == "tnn" or args.quant == "sq_tnn":
-            #     quantize.Quantization(optimizer_sf.param_groups[0]['params'], r_it)
-            # else:
-            #     quantize.Quantization(r_it)
-            # U.save_model(model, best_acc, f"model_{args.quant}_{args.model}_{args.dataset}.pkl")
-            # quantize.Restore()
+            if args.quant == "tnn" or args.quant == "sq_tnn":
+                quantize.Quantization(optimizer_sf.param_groups[0]['params'], r_it)
+            else:
+                quantize.Quantization(r_it)
+            U.save_model(model, best_acc, f"model_{args.quant}_{args.model}_{args.dataset}.pkl")
+            quantize.Restore()
         
         scheduler.step()
 
     elapsed = time.time() - start
     d = {"model": args.model, "quant": args.quant, "prob_type": args.prob_type, "e_type": args.e_type, 
-         "dataset": args.dataset, "best_acc": float(f"{float(best_acc):.2f}"), 
+         "best_acc": float(f"{float(best_acc):.2f}"), "dataset": args.dataset,
          "best_epoch": best_epoch, "final_acc": float(f"{float(acc):.2f}"), "total_epoch": args.epochs,
-         "time": float(f"{elapsed/60:.2f}"), "workers": args.num_workers}
+         "time": float(f"{elapsed/60:.2f}")}
 
-    with open(f"txt_results/test_run_2.txt", 'a+') as f:
+    with open(f"txt_results/final.txt", 'a+') as f:
         f.write(str(d) + "\n")
         f.write(str(all_acc) + "\n")
         f.write(str(all_loss) + "\n")
