@@ -30,8 +30,6 @@ def ParseArgs():
                         help="how many workers to use")
     parser.add_argument("--dataset", type=str, default="cifar10",
                         help="which dataset to use")
-    parser.add_argument("--skip_layers", action="store_true",
-                        help="do you want to NOT quantize the first and last layers")
     parser.add_argument("--prob_type", type=str, default="linear",
                         help="which probability function to determine quantization")
     parser.add_argument("--e_type", type=str, default="default",
@@ -64,8 +62,12 @@ def main():
         quantize = U.FWN(model)
     elif args.quant == "bwn":
         quantize = U.BinarizeOp(model)
-    elif args.quant == "sq_bwn":
-        quantize = U.SQ_BinarizeOp(model, args.prob_type, args.e_type)
+    elif args.quant == "sq_bwn_default_layer":
+        quantize = U.SQ_BWN_default_layer(model)
+    elif args.quant == "sq_bwn_custom_layer":
+        quantize = U.SQ_BWN_custom_layer(model, args.prob_type, args.e_type)
+    elif args.quant == "sq_bwn_custom_filter":
+        quantize = U.SQ_BWN_custom_filter(model, args.prob_type, args.e_type)
     elif args.quant == "twn":
         quantize = U.TernarizeOp(model)
     elif args.quant == "sq_twn":

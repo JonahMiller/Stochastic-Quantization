@@ -27,28 +27,20 @@ class FWN:
 
 
 class BinarizeOp:
-    def __init__(self, model, skip_layers=False):
+    def __init__(self,model):
         count_targets = 0
-        self.saved_params = []
-        self.target_modules = []
-        conv_lin_layers = []
         for m in model.modules():
             if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
-                conv_lin_layers.append(m)
                 count_targets += 1
-        if skip_layers:
-            for m in conv_lin_layers[1:-1]:
-                tmp = m.weight.data.clone()
-                self.saved_params.append(tmp) #tensor
-                self.target_modules.append(m.weight) #Parameter
-            count_targets -= 2
-        else:
-            for m in conv_lin_layers:
-                tmp = m.weight.data.clone()
-                self.saved_params.append(tmp) #tensor
-                self.target_modules.append(m.weight) #Parameter
         self.binarize_range = np.linspace(0,count_targets-1,count_targets).astype('int').tolist()
         self.num_of_params = len(self.binarize_range)
+        self.saved_params = []
+        self.target_modules = []
+        for m in model.modules():
+            if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
+                tmp = m.weight.data.clone()
+                self.saved_params.append(tmp) #tensor
+                self.target_modules.append(m.weight) #Parameter
     
     def SaveWeights(self):
         for index in range(self.num_of_params):
@@ -85,32 +77,226 @@ class BinarizeOp:
         for index in range(self.num_of_params):
             self.target_modules[index].data.copy_(self.saved_params[index])
 
-
-class SQ_BinarizeOp:
-    def __init__(self, model, prob_type, e_type, skip_layers=False):
+class SQ_BWN_default_layer:
+    def __init__(self, model):
         count_targets = 0
-        self.saved_params = []
-        self.target_modules = []
-        conv_lin_layers = []
-        self.prob_type = prob_type
-        self.e_type = e_type
         for m in model.modules():
             if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
-                conv_lin_layers.append(m)
                 count_targets += 1
-        if skip_layers:
-            for m in conv_lin_layers[1:-1]:
-                tmp = m.weight.data.clone()
-                self.saved_params.append(tmp) #tensor
-                self.target_modules.append(m.weight) #Parameter
-            count_targets -= 2
-        else:
-            for m in conv_lin_layers:
-                tmp = m.weight.data.clone()
-                self.saved_params.append(tmp) #tensor
-                self.target_modules.append(m.weight) #Parameter
         self.binarize_range = np.linspace(0,count_targets-1,count_targets).astype('int').tolist()
         self.num_of_params = len(self.binarize_range)
+        self.saved_params = []
+        self.target_modules = []
+        for m in model.modules():
+            if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
+                tmp = m.weight.data.clone()
+                self.saved_params.append(tmp) #tensor
+                self.target_modules.append(m.weight) #Parameter
+
+    
+    def SaveWeights(self):
+        for index in range(self.num_of_params):
+            self.saved_params[index].copy_(self.target_modules[index].data)
+
+    def SQ_BinarizeWeights(self, r):
+        f = []
+        Q = []
+        for index in range(self.num_of_params):
+            f_temp, Q_temp = self.Binarize(self.target_modules[index].data)
+            f.append(f_temp)
+            Q.append(Q_temp)
+        f = torch.FloatTensor(f).cuda()
+        p = f/f.sum()
+        r_it = int(r*self.num_of_params)
+        index_used = []
+        for _ in range(r_it):
+            p_norm = p/p.sum()
+            v = torch.rand(1).cuda()
+            s, j = p_norm[0], 0
+            while s < v and j + 1 < len(p):
+                j += 1
+                s += p_norm[j]
+            p[j] = 0
+            index_used.append(j)
+            self.target_modules[j].data = Q[j].data
+
+    def BinarizeWeights(self):
+        for index in range(self.num_of_params):
+            self.target_modules[index].data = self.No_SQ_Binarize(self.target_modules[index].data)
+    
+    def No_SQ_Binarize(self,tensor):
+        tensor = tensor.to("cpu")
+        output = torch.empty(tensor.size())
+        alpha = self.Alpha(tensor)
+        for i in range(tensor.size()[0]):
+            w = tensor[i]
+            pos_one = (w > 0).float()
+            neg_one = (w < -0).float()
+            output[i] = alpha[i]*(pos_one - neg_one)
+        return output.to(device)
+    
+    def Binarize(self, tensor):
+        tensor = tensor.to("cpu")
+        Q = torch.empty(tensor.size())
+        alpha = self.Alpha(tensor)
+        for i in range(tensor.size()[0]):
+            w = tensor[i]
+            pos_one = (w > 0).float()
+            neg_one = (w < -0).float()
+            Q[i] = alpha[i]*(pos_one - neg_one)
+        e = (tensor - Q).abs().sum()/tensor.abs().sum()
+        f = 1/e + 10**(-7)
+        return f, Q.to(device)
+        
+    def Alpha(self,tensor):
+        n = tensor[0].nelement()
+        if(len(tensor.size()) == 4):     #convolution layer
+            alpha = tensor.norm(1,3).sum(2).sum(1).div(n)
+        elif(len(tensor.size()) == 2):   #fc layer
+            alpha = tensor.norm(1,1).div(n)
+        return alpha
+    
+    def Quantization(self, r):
+        self.SaveWeights()
+        if r != 1:
+            self.SQ_BinarizeWeights(r)
+        else:
+            self.BinarizeWeights()
+    
+    def Restore(self):
+        for index in range(self.num_of_params):
+            self.target_modules[index].data.copy_(self.saved_params[index])
+
+class SQ_BWN_custom_layer:
+    def __init__(self, model, prob_type, e_type):
+        count_targets = 0
+        for m in model.modules():
+            if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
+                count_targets += 1
+        self.binarize_range = np.linspace(0,count_targets-1,count_targets).astype('int').tolist()
+        self.num_of_params = len(self.binarize_range)
+        self.saved_params = []
+        self.target_modules = []
+        for m in model.modules():
+            if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
+                tmp = m.weight.data.clone()
+                self.saved_params.append(tmp) #tensor
+                self.target_modules.append(m.weight) #Parameter
+        self.prob_type = prob_type
+        self.e_type = e_type
+    
+    
+    def SaveWeights(self):
+        for index in range(self.num_of_params):
+            self.saved_params[index].copy_(self.target_modules[index].data)
+
+    def SQ_BinarizeWeights(self, r):
+        f = []
+        Q = []
+        for index in range(self.num_of_params):
+            f_temp, Q_temp = self.Binarize(self.target_modules[index].data)
+            f.append(f_temp)
+            Q.append(Q_temp)
+        f = torch.FloatTensor(f).cuda()
+        p = self.prob(f)
+        r_it = int((1-r)*self.num_of_params)
+        index_used = []
+        for _ in range(r_it):
+            p_norm = p/p.sum()
+            v = torch.rand(1).cuda()
+            s, j = p_norm[0], 0
+            while s < v and j + 1 < len(p):
+                j += 1
+                s += p_norm[j]
+            p[j] = 0
+            index_used.append(j)
+        for index in range(self.num_of_params):
+            if index not in index_used:
+                self.target_modules[index].data = Q[index].data
+
+    def BinarizeWeights(self):
+        for index in range(self.num_of_params):
+            self.target_modules[index].data = self.No_SQ_Binarize(self.target_modules[index].data)
+    
+    def No_SQ_Binarize(self,tensor):
+        tensor = tensor.to("cpu")
+        output = torch.empty(tensor.size())
+        alpha = self.Alpha(tensor)
+        for i in range(tensor.size()[0]):
+            w = tensor[i]
+            pos_one = (w > 0).float()
+            neg_one = (w < -0).float()
+            output[i] = alpha[i]*(pos_one - neg_one)
+        return output.to(device)
+    
+    def Binarize(self, tensor):
+        tensor = tensor.to("cpu")
+        Q = torch.empty(tensor.size())
+        alpha = self.Alpha(tensor)
+        for i in range(tensor.size()[0]):
+            w = tensor[i]
+            pos_one = (w > 0).float()
+            neg_one = (w < -0).float()
+            Q[i] = alpha[i]*(pos_one - neg_one)
+        e = (tensor - Q).abs().sum()/tensor.abs().sum()
+        if self.e_type == "one_minus_invert":
+            f = 1/e + 10**(-7)
+        else:
+            f = e
+        return f, Q.to(device)
+
+    def prob(self, f):
+        if self.prob_type == "constant":
+            prob = torch.full(f.size(), 1/f.nelement())
+        elif self.prob_type == "linear":
+            prob = f/f.sum()
+        elif self.prob_type == "softmax":
+            prob = torch.exp(f)/(torch.exp(f).sum())
+        elif self.prob_type == "sigmoid":
+            prob = 1/(1 + torch.exp(-f))
+        
+        if self.e_type == "one_minus_invert":
+            return 1 - prob
+        elif self.e_type == "default":
+            return prob
+        
+    def Alpha(self,tensor):
+        n = tensor[0].nelement()
+        if(len(tensor.size()) == 4):     #convolution layer
+            alpha = tensor.norm(1,3).sum(2).sum(1).div(n)
+        elif(len(tensor.size()) == 2):   #fc layer
+            alpha = tensor.norm(1,1).div(n)
+        return alpha
+    
+    def Quantization(self, r):
+        self.SaveWeights()
+        if r != 1:
+            self.SQ_BinarizeWeights(r)
+        else:
+            self.BinarizeWeights()
+    
+    def Restore(self):
+        for index in range(self.num_of_params):
+            self.target_modules[index].data.copy_(self.saved_params[index])
+
+
+class SQ_BWN_custom_filter:
+    def __init__(self, model, prob_type, e_type):
+        count_targets = 0
+        for m in model.modules():
+            if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
+                count_targets += 1
+        self.binarize_range = np.linspace(0,count_targets-1,count_targets).astype('int').tolist()
+        self.num_of_params = len(self.binarize_range)
+        self.saved_params = []
+        self.target_modules = []
+        for m in model.modules():
+            if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
+                tmp = m.weight.data.clone()
+                self.saved_params.append(tmp) #tensor
+                self.target_modules.append(m.weight) #Parameter
+        self.prob_type = prob_type
+        self.e_type = e_type
     
     
     def SaveWeights(self):
@@ -214,28 +400,21 @@ class SQ_BinarizeOp:
 
 
 class TernarizeOp:
-    def __init__(self, model, skip_layers=False):
+    def __init__(self,model):
+        model = model.to(device)
         count_targets = 0
-        self.saved_params = []
-        self.target_modules = []
-        conv_lin_layers = []
         for m in model.modules():
             if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
-                conv_lin_layers.append(m)
                 count_targets += 1
-        if skip_layers:
-            for m in conv_lin_layers[1:-1]:
-                tmp = m.weight.data.clone()
-                self.saved_params.append(tmp) #tensor
-                self.target_modules.append(m.weight) #Parameter
-            count_targets -= 2
-        else:
-            for m in conv_lin_layers:
-                tmp = m.weight.data.clone()
-                self.saved_params.append(tmp) #tensor
-                self.target_modules.append(m.weight) #Parameter
         self.ternarize_range = np.linspace(0,count_targets-1,count_targets).astype('int').tolist()
         self.num_of_params = len(self.ternarize_range)
+        self.saved_params = []
+        self.target_modules = []
+        for m in model.modules():
+            if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
+                tmp = m.weight.data.clone()
+                self.saved_params.append(tmp) #tensor
+                self.target_modules.append(m.weight) #Parameter
     
     
     def SaveWeights(self):
@@ -285,30 +464,22 @@ class TernarizeOp:
 
 
 class SQ_TernarizeOp:
-    def __init__(self, model, prob_type, e_type, skip_layers=False):
+    def __init__(self, model, prob_type, e_type):
         count_targets = 0
-        self.saved_params = []
-        self.target_modules = []
-        conv_lin_layers = []
-        self.prob_type = prob_type
-        self.e_type = e_type
         for m in model.modules():
             if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
-                conv_lin_layers.append(m)
                 count_targets += 1
-        if skip_layers:
-            for m in conv_lin_layers[1:-1]:
-                tmp = m.weight.data.clone()
-                self.saved_params.append(tmp) #tensor
-                self.target_modules.append(m.weight) #Parameter
-            count_targets -= 2
-        else:
-            for m in conv_lin_layers:
-                tmp = m.weight.data.clone()
-                self.saved_params.append(tmp) #tensor
-                self.target_modules.append(m.weight) #Parameter
         self.ternarize_range = np.linspace(0,count_targets-1,count_targets).astype('int').tolist()
         self.num_of_params = len(self.ternarize_range)
+        self.saved_params = []
+        self.target_modules = []
+        for m in model.modules():
+            if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
+                tmp = m.weight.data.clone()
+                self.saved_params.append(tmp) #tensor
+                self.target_modules.append(m.weight) #Parameter
+        self.prob_type = prob_type
+        self.e_type = e_type
     
     def SaveWeights(self):
         for index in range(self.num_of_params):
@@ -422,29 +593,21 @@ class SQ_TernarizeOp:
 
 
 class Trained_TernarizeOp:
-    def __init__(self, model, skip_layers=False):
+    def __init__(self,model):
         model = model.to(device)
         count_targets = 0
-        self.saved_params = []
-        self.target_modules = []
-        conv_lin_layers = []
         for m in model.modules():
             if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
-                conv_lin_layers.append(m)
                 count_targets += 1
-        if skip_layers:
-            for m in conv_lin_layers[1:-1]:
-                tmp = m.weight.data.clone()
-                self.saved_params.append(tmp) #tensor
-                self.target_modules.append(m.weight) #Parameter
-            count_targets -= 2
-        else:
-            for m in conv_lin_layers:
-                tmp = m.weight.data.clone()
-                self.saved_params.append(tmp) #tensor
-                self.target_modules.append(m.weight) #Parameter
         self.ternarize_range = np.linspace(0,count_targets-1,count_targets).astype('int').tolist()
         self.num_of_params = len(self.ternarize_range)
+        self.saved_params = []
+        self.target_modules = []
+        for m in model.modules():
+            if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
+                tmp = m.weight.data.clone()
+                self.saved_params.append(tmp) #tensor
+                self.target_modules.append(m.weight) #Parameter
 
     def Ternarize(self, tensor, sf):
         t = 0.15
@@ -496,31 +659,23 @@ class Trained_TernarizeOp:
 
 
 class SQ_Trained_TernarizeOp:
-    def __init__(self, model, prob_type, e_type, skip_layers=False):
+    def __init__(self,model, prob_type, e_type):
         model = model.to(device)
         count_targets = 0
-        self.saved_params = []
-        self.target_modules = []
-        conv_lin_layers = []
-        self.prob_type = prob_type
-        self.e_type = e_type
         for m in model.modules():
             if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
-                conv_lin_layers.append(m)
                 count_targets += 1
-        if skip_layers:
-            for m in conv_lin_layers[1:-1]:
-                tmp = m.weight.data.clone()
-                self.saved_params.append(tmp) #tensor
-                self.target_modules.append(m.weight) #Parameter
-            count_targets -= 2
-        else:
-            for m in conv_lin_layers:
-                tmp = m.weight.data.clone()
-                self.saved_params.append(tmp) #tensor
-                self.target_modules.append(m.weight) #Parameter
         self.ternarize_range = np.linspace(0,count_targets-1,count_targets).astype('int').tolist()
         self.num_of_params = len(self.ternarize_range)
+        self.saved_params = []
+        self.target_modules = []
+        for m in model.modules():
+            if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
+                tmp = m.weight.data.clone()
+                self.saved_params.append(tmp) #tensor
+                self.target_modules.append(m.weight) #Parameter
+        self.prob_type = prob_type
+        self.e_type = e_type
 
     def SQ_TernarizeWeights(self, scaling_factors, r):
         for index in range(self.num_of_params):
