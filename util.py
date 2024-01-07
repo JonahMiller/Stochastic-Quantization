@@ -28,6 +28,7 @@ class FWN:
 
 class BWN:
     def __init__(self,model):
+        model = model.to(device)
         count_targets = 0
         for m in model.modules():
             if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
@@ -77,8 +78,10 @@ class BWN:
         for index in range(self.num_of_params):
             self.target_modules[index].data.copy_(self.saved_params[index])
 
+
 class SQ_BWN_default_layer:
     def __init__(self, model, prob_type):
+        model = model.to(device)
         count_targets = 0
         for m in model.modules():
             if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
@@ -181,6 +184,7 @@ class SQ_BWN_default_layer:
 
 class SQ_BWN_custom_layer:
     def __init__(self, model, prob_type, e_type):
+        model = model.to(device)
         count_targets = 0
         for m in model.modules():
             if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
@@ -293,6 +297,7 @@ class SQ_BWN_custom_layer:
 
 class SQ_BWN_custom_filter:
     def __init__(self, model, prob_type, e_type):
+        model = model.to(device)
         count_targets = 0
         for m in model.modules():
             if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
@@ -426,8 +431,7 @@ class TWN:
                 tmp = m.weight.data.clone()
                 self.saved_params.append(tmp) #tensor
                 self.target_modules.append(m.weight) #Parameter
-    
-    
+       
     def SaveWeights(self):
         for index in range(self.num_of_params):
             self.saved_params[index].copy_(self.target_modules[index].data)
@@ -476,6 +480,7 @@ class TWN:
 
 class SQ_TWN_default_layer:
     def __init__(self, model, prob_type):
+        model = model.to(device)
         count_targets = 0
         for m in model.modules():
             if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
@@ -533,6 +538,7 @@ class SQ_TWN_default_layer:
             self.target_modules[index].data = self.No_SQ_Ternarize(self.target_modules[index].data)
     
     def Ternarize(self, tensor):
+        tensor = tensor.to("cpu")
         f = torch.empty(tensor.size()[0])
         Q = torch.empty(tensor.size())
         delta = self.Delta(tensor)
@@ -542,12 +548,9 @@ class SQ_TWN_default_layer:
             pos_one = (w > delta[i]).float()
             neg_one = (w < -delta[i]).float()
             Q[i] = alpha[i]*(pos_one - neg_one)
-            e = (w - Q[i]).abs().sum()/w.abs().sum()
-            if self.e_type == "one_minus_invert":
-                f[i] = 1/e + 10**(-7)
-            else:
-                f[i] = e
-        return f, Q
+        e = (tensor - Q).abs().sum()/w.abs().sum()
+        f = 1/e + 10**(-7)
+        return f, Q.to(device)
     
     def No_SQ_Ternarize(self,tensor):
         tensor = tensor.to("cpu")
@@ -592,6 +595,7 @@ class SQ_TWN_default_layer:
 
 class SQ_TWN_custom_layer:
     def __init__(self, model, prob_type, e_type):
+        model = model.to(device)
         count_targets = 0
         for m in model.modules():
             if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
@@ -656,6 +660,7 @@ class SQ_TWN_custom_layer:
             self.target_modules[index].data = self.No_SQ_Ternarize(self.target_modules[index].data)
     
     def Ternarize(self, tensor):
+        tensor = tensor.to("cpu")
         f = torch.empty(tensor.size()[0])
         Q = torch.empty(tensor.size())
         delta = self.Delta(tensor)
@@ -665,12 +670,12 @@ class SQ_TWN_custom_layer:
             pos_one = (w > delta[i]).float()
             neg_one = (w < -delta[i]).float()
             Q[i] = alpha[i]*(pos_one - neg_one)
-            e = (w - Q[i]).abs().sum()/w.abs().sum()
-            if self.e_type == "one_minus_invert":
-                f[i] = 1/e + 10**(-7)
-            else:
-                f[i] = e
-        return f, Q
+        e = (w - Q).abs().sum()/w.abs().sum()
+        if self.e_type == "one_minus_invert":
+            f[i] = 1/e + 10**(-7)
+        else:
+            f[i] = e
+        return f, Q.to(device)
     
     def No_SQ_Ternarize(self,tensor):
         tensor = tensor.to("cpu")
@@ -715,6 +720,7 @@ class SQ_TWN_custom_layer:
 
 class SQ_TWN_custom_filter:
     def __init__(self, model, prob_type, e_type):
+        model = model.to(device)
         count_targets = 0
         for m in model.modules():
             if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
@@ -755,6 +761,7 @@ class SQ_TWN_custom_filter:
         return output.to(device)
     
     def Ternarize(self, tensor):
+        tensor = tensor.to("cpu")
         f = torch.empty(tensor.size()[0])
         Q = torch.empty(tensor.size())
         delta = self.Delta(tensor)

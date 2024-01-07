@@ -34,6 +34,8 @@ def ParseArgs():
                         help="which probability function to determine quantization")
     parser.add_argument("--e_type", type=str, default="default",
                         help="how to deal with error function")
+    parser.add_argument("--test_name", type=str, default="ignore",
+                        help="name of test")
     
     args = parser.parse_args()
     return args
@@ -143,7 +145,7 @@ def main():
                 quantize.Quantization(optimizer_sf.param_groups[0]['params'], r_it)
             else:
                 quantize.Quantization(r_it)
-            U.save_model(model, best_acc, f"model_{args.quant}_{args.model}_{args.dataset}.pkl")
+            U.save_model(model, best_acc, f"model_{args.test_name}_{args.quant}_{args.model}_{args.dataset}_{args.e_type}_{args.prob_type}.pkl")
             quantize.Restore()
         
         scheduler.step()
