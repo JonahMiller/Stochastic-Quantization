@@ -661,7 +661,6 @@ class SQ_TWN_custom_layer:
     
     def Ternarize(self, tensor):
         tensor = tensor.to("cpu")
-        f = torch.empty(tensor.size()[0])
         Q = torch.empty(tensor.size())
         delta = self.Delta(tensor)
         alpha = self.Alpha(tensor,delta)
@@ -672,9 +671,9 @@ class SQ_TWN_custom_layer:
             Q[i] = alpha[i]*(pos_one - neg_one)
         e = (w - Q).abs().sum()/w.abs().sum()
         if self.e_type == "one_minus_invert":
-            f[i] = 1/e + 10**(-7)
+            f = 1/e + 10**(-7)
         else:
-            f[i] = e
+            f = e
         return f, Q.to(device)
     
     def No_SQ_Ternarize(self,tensor):

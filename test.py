@@ -32,6 +32,7 @@ def table_3():
     test(model, quant, prob_type=probs, e_type=es, test_name=name)
 
 def table_4():
+    # What is this table?!?!?!
     name = "table 4"
     model = ["vgg9", "resnet20"]
     quant = ["sq_twn_custom_layer", "sq_twn_custom_layer"]
