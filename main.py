@@ -78,10 +78,10 @@ def main():
         quantize = U.SQ_TWN_custom_layer(model, args.prob_type, args.e_type)
     elif args.quant == "sq_twn_custom_filter":
         quantize = U.SQ_TWN_custom_filter(model, args.prob_type, args.e_type)
-    elif args.quant == "tnn":
-        quantize = U.Trained_TernarizeOp(model)
-    elif args.quant == "sq_tnn":
-        quantize = U.SQ_Trained_TernarizeOp(model, args.prob_type, args.e_type)
+    elif args.quant == "ttq":
+        quantize = U.TTQ(model)
+    elif args.quant == "sq_ttq_custom_filter":
+        quantize = U.SQ_TTQ_custom_filter(model, args.prob_type, args.e_type)
 
 
     model.to(device)
@@ -125,9 +125,9 @@ def main():
         else:
             r_it = r[3]
 
-        if args.quant == "tnn" or args.quant == "sq_tnn":
-            train_tnn(args, epoch_index, train_loader, model, [optimizer, optimizer_sf], criterion, quantize, r_it)
-            acc, loss = test_tnn(args, model, test_loader, criterion, quantize, r_it, scaling_factors=optimizer_sf.param_groups[0]['params'])
+        if args.quant == "ttq" or args.quant == "sq_ttq":
+            train_ttq(args, epoch_index, train_loader, model, [optimizer, optimizer_sf], criterion, quantize, r_it)
+            acc, loss = test_ttq(args, model, test_loader, criterion, quantize, r_it, scaling_factors=optimizer_sf.param_groups[0]['params'])
         elif args.quant == "elq_twn" or args.quant == "sq_elq_twn":
             train_elq(args, epoch_index, train_loader, model, optimizer, criterion, quantize, r_it)
             acc, loss = test_elq(args, model, test_loader, criterion, quantize, r_it)
@@ -141,7 +141,7 @@ def main():
         if acc > best_acc:
             best_acc = acc
             best_epoch = epoch_index
-            if args.quant == "tnn" or args.quant == "sq_tnn":
+            if args.quant == "ttq" or args.quant == "sq_ttq":
                 quantize.Quantization(optimizer_sf.param_groups[0]['params'], r_it)
             else:
                 quantize.Quantization(r_it)
@@ -188,7 +188,7 @@ def train_standard(args, epoch_index, train_loader, model, optimizer, criterion,
     print(f"Train Epoch: {epoch_index} took {(time.time() - train_time):.2f} seconds")
 
 
-def train_tnn(args, epoch_index, train_loader, model, optimizer_list, criterion, quantize, r):
+def train_ttq(args, epoch_index, train_loader, model, optimizer_list, criterion, quantize, r):
     model.train()
     train_time = time.time()
 
@@ -270,7 +270,7 @@ def test_standard(args, model, test_loader, criterion, quantize, r):
     return acc, test_loss
 
 
-def test_tnn(args, model, test_loader, criterion, quantize, r, scaling_factors):
+def test_ttq(args, model, test_loader, criterion, quantize, r, scaling_factors):
     model.eval()
     test_loss = 0
     correct = 0

@@ -848,7 +848,7 @@ class SQ_TWN_custom_filter:
             self.target_modules[index].data.copy_(self.saved_params[index])
 
 
-class Trained_TernarizeOp:
+class TTQ:
     def __init__(self,model):
         model = model.to(device)
         count_targets = 0
@@ -914,7 +914,7 @@ class Trained_TernarizeOp:
             self.target_modules[index].data.copy_(self.saved_params[index])
 
 
-class SQ_Trained_TernarizeOp:
+class SQ_TTQ_custom_filter:
     def __init__(self,model, prob_type, e_type):
         model = model.to(device)
         count_targets = 0

@@ -32,12 +32,11 @@ def table_3():
     test(model, quant, prob_type=probs, e_type=es, test_name=name)
 
 def table_4():
-    # What is this table?!?!?!
-    name = "table 4"
+    name = "table4"
     model = ["vgg9", "resnet20"]
-    quant = ["sq_twn_custom_layer", "sq_twn_custom_layer"]
-    probs = ["constant", "linear", "sigmoid", "softmax"]
-    es = ["default", "one_minus_invert"]
+    quant = ["sq_bwn_custom_filter", "sq_twn_custom_filter"]
+    probs = ["sigmoid"]
+    es = ["one_minus_invert"]
     test(model, quant, prob_type=probs, e_type=es, test_name=name)
 
 
@@ -49,14 +48,14 @@ if __name__ == "__main__":
     #     f.write("#############################################################################################" + "\n")
     # f.close()
 
-    table_3()
-
-    with open(f"txt_results/final.txt", 'a+') as f:
-        f.write("#############################################################################################" + "\n")
-    f.close()
-
-    # table_4()
+    # table_3()
 
     # with open(f"txt_results/final.txt", 'a+') as f:
     #     f.write("#############################################################################################" + "\n")
     # f.close()
+
+    table_4()
+
+    with open(f"txt_results/final.txt", 'a+') as f:
+        f.write("#############################################################################################" + "\n")
+    f.close()

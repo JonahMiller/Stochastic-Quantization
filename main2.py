@@ -3,13 +3,10 @@
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
-import torch.optim as optim
-from torchvision import datasets,  transforms
 import argparse
 from itertools import chain
 
 import model as M
-import util as U
 from inq.sgd import ELQSGD, SQ_ELQSGD, INQSGD
 from inq.quantization_scheduler import INQScheduler, ELQScheduler, SQ_ELQScheduler
 import inq.quantization_scheduler as inqs
@@ -17,6 +14,15 @@ import input_pipeline
 import time
     
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
+def save_model(model, acc, name):
+    print('==>>>Saving model ...')
+    state = {
+        'acc':acc,
+        'state_dict':model.state_dict()
+    }
+    torch.save(state, f"trained_models/{name}")
+    print('*** DONE! ***')
 
 def ParseArgs():
     parser = argparse.ArgumentParser(description='Quantisation approaches using multiple algorithms')
@@ -38,6 +44,8 @@ def ParseArgs():
                         help="which probability function to determine quantization")
     parser.add_argument("--e_type", type=str, default="default",
                         help="how to deal with error function")
+    parser.add_argument("--test_name", type=str, default="ignore",
+                        help="name of test")
     
     args = parser.parse_args()
     return args
@@ -50,9 +58,13 @@ def main():
     torch.backends.cudnn.benchmark = True
 
     train_loader, test_loader = input_pipeline.main(args.dataset)
-        
-    model = M.VGG9(10)
-    model.load_state_dict(torch.load("model_state.pkl")["state_dict"])
+    
+    if args.model == "vgg9":
+        model = M.VGG9(10)
+        model.load_state_dict(torch.load("vgg9_fwn.pkl")["state_dict"])
+    elif args.model == "resnet20":
+        model = M.ResNet20(10)
+        model.load_state_dict(torch.load("resnet20_fwn.pkl")["state_dict"])
  
     quantized_parameters = list(chain.from_iterable([[p for n, p in m.named_parameters() if 'weight' in n] for m in model.modules() 
                                                       if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear)]))
@@ -97,6 +109,8 @@ def main():
                                                 step_size=2,
                                                 gamma=0.5)
 
+    start = time.time()
+
     for _ in range(quantization_epochs):
         inqs.reset_lr_scheduler(scheduler)
         quantization_scheduler.step()
@@ -112,10 +126,16 @@ def main():
         quantization_scheduler.finish_quantize()
         acc, loss = test(args, model, test_loader, criterion)
 
-    d = {"model": f"{args.model}", "quant": f"{args.quant}", "dataset": f"{args.dataset}", 
-         "prob_type": f"{args.prob_type}", "e_type": f"{args.e_type}", "final_acc": f"{float(acc):.2f}"}
+    elapsed = time.time() - start
 
-    with open(f"txt_results/inq_test_run_1.txt", 'a+') as f:
+    save_model(model, acc, f"trained_models2/model_{args.test_name}_{args.quant}_{args.model}_{args.dataset}_{args.e_type}_{args.prob_type}.pkl")
+
+    d = {"model": args.model, "quant": args.quant, "prob_type": args.prob_type, 
+         "e_type": args.e_type, "dataset": args.dataset,
+         "final_acc": float(f"{float(acc):.2f}"), "total_epoch": args.epochs,
+         "time": float(f"{elapsed/60:.2f}")}
+
+    with open(f"txt_results/final2.txt", 'a+') as f:
         f.write(str(d) + "\n")
         f.write("\n")
 
@@ -163,16 +183,6 @@ def test(args, model, test_loader, criterion):
     
     return acc, test_loss
 
-def model_size(model):
-    param_size = 0
-    for param in model.parameters():
-        param_size += param.nelement() * param.element_size()
-    buffer_size = 0
-    for buffer in model.buffers():
-        buffer_size += buffer.nelement() * buffer.element_size()
-
-    size_all_mb = (param_size + buffer_size) / 1024**2
-    return f'model size: {size_all_mb:.3f}MB'
 
 if __name__ == '__main__':
     main()
