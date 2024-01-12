@@ -17,18 +17,12 @@ def test2(model, quant, prob_type=["linear"], e_type=["default"], test_name="def
                                     "--prob_type", p, "--e_type", e, "--test_name", test_name])
 
 
-# def table_1():
-#     name = "table_1"
-#     model = ["vgg9", "resnet20"]
-#     quant = ["fwn", "bwn", "sq_bwn_default_layer", "twn", "sq_twn_default_layer", "ttq", "sq_ttq_default_layer"]
-#     test(model, quant, test_name=name)
-
 def table_1():
     name = "table_1"
     model = ["vgg9", "resnet20"]
-    quant = ["ttq", "sq_ttq_default_layer"]
+    quant = ["fwn", "bwn", "sq_bwn_default_layer", "twn", "sq_twn_default_layer", "ttq", "sq_ttq_default_layer"]
     test(model, quant, test_name=name)
-
+    
 def table_3():
     name= "table_3"
     model = ["vgg9", "resnet20"]
@@ -51,17 +45,17 @@ if __name__ == "__main__":
     table_1()
 
     with open(f"txt_results/final.txt", 'a+') as f:
-        f.write("#############################################################################################" + "\n")
+        f.write("#############################################################################################" + "\n\n")
     f.close()
 
-    # table_3()
+    table_3()
 
-    # with open(f"txt_results/final.txt", 'a+') as f:
-    #     f.write("#############################################################################################" + "\n")
-    # f.close()
+    with open(f"txt_results/final.txt", 'a+') as f:
+        f.write("#############################################################################################" + "\n\n")
+    f.close()
 
-    # table_4()
+    table_4()
 
-    # with open(f"txt_results/final.txt", 'a+') as f:
-    #     f.write("#############################################################################################" + "\n")
-    # f.close()
+    with open(f"txt_results/final.txt", 'a+') as f:
+        f.write("#############################################################################################" + "\n\n")
+    f.close()
