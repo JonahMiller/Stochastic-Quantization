@@ -6,7 +6,7 @@ Cambridge Computer Science Part III L46 project, based on investigating [Stochas
 
 This project recreates the stochastic algorithm in PyTorch, and can run on low-bit DNNs: BWN, TWN or TTQ.
 
-There are two multiples setup: VGG-9, ResNet-20. However, general VGG and ResNet models can be setup in the models.py. There are differences between the models I use and those in the paper.
+There are two model setups: VGG-9, ResNet-20. However, general VGG and ResNet models can be setup in the models.py. There are differences between the models I use and those in the paper.
 
 The quantization model adaptions are in the util.py file, and the main.py file runs it. 
 
