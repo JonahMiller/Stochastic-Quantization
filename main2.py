@@ -8,7 +8,7 @@ from itertools import chain
 
 import model as M
 from inq.sgd import ELQSGD, SQ_ELQSGD, INQSGD
-from inq.quantization_scheduler import INQScheduler, ELQScheduler, SQ_ELQScheduler
+from inq.quantization_scheduler import INQScheduler, ELQScheduler,SQ_ELQScheduler_custom_layer, SQ_ELQScheduler_custom_filter
 import inq.quantization_scheduler as inqs
 import input_pipeline
 import time
@@ -26,7 +26,7 @@ def save_model(model, acc, name):
 
 def ParseArgs():
     parser = argparse.ArgumentParser(description='Quantisation approaches using multiple algorithms')
-    parser.add_argument('--epochs', type=int, default=4, metavar='N', 
+    parser.add_argument('--epochs', type=int, default=6, metavar='N', 
                         help='number of epoch to train(default: 4)')
     parser.add_argument('--seed', type=int, default=1, metavar='S', 
                         help='random seed(default: 1)')
@@ -85,13 +85,20 @@ def main():
             {'params': fp_parameters, 'weight_bits': None}
         ], 0.01, momentum=0.9, weight_decay=0.0001, weight_bits=3)
         quantization_scheduler = ELQScheduler(optimizer, iterative_steps, strategy="pruning")
-    elif args.quant == "sq_elq":
+    elif args.quant == "sq_elq_custom_layer":
         iterative_steps = [0.5, 0.75, 0.875, 1]
         optimizer = SQ_ELQSGD([
             {'params': quantized_parameters},
             {'params': fp_parameters, 'weight_bits': None}
         ], 0.01, momentum=0.9, weight_decay=0.0001, weight_bits=3)
-        quantization_scheduler = SQ_ELQScheduler(optimizer, iterative_steps, args.prob_type, args.e_type, strategy="pruning")
+        quantization_scheduler = SQ_ELQScheduler_custom_layer(optimizer, iterative_steps, args.prob_type, args.e_type, strategy="pruning")
+    elif args.quant == "sq_elq_custom_filter":
+        iterative_steps = [0.5, 0.75, 0.875, 1]
+        optimizer = SQ_ELQSGD([
+            {'params': quantized_parameters},
+            {'params': fp_parameters, 'weight_bits': None}
+        ], 0.01, momentum=0.9, weight_decay=0.0001, weight_bits=3)
+        quantization_scheduler = SQ_ELQScheduler_custom_filter(optimizer, iterative_steps, args.prob_type, args.e_type, strategy="pruning")
     elif args.quant == "inq":
         iterative_steps = [0.5, 0.75, 0.875, 1]
         optimizer = INQSGD([

@@ -31,14 +31,6 @@ def table_3():
     es = ["default", "one_minus_invert"]
     test(model, quant, prob_type=probs, e_type=es, test_name=name)
 
-def table_4():
-    name = "table4"
-    model = ["vgg9", "resnet20"]
-    quant = ["sq_bwn_custom_filter", "sq_twn_custom_filter"]
-    probs = ["sigmoid"]
-    es = ["one_minus_invert"]
-    test(model, quant, prob_type=probs, e_type=es, test_name=name)
-
 
 if __name__ == "__main__":
 
@@ -49,12 +41,6 @@ if __name__ == "__main__":
     f.close()
 
     table_3()
-
-    with open(f"txt_results/final.txt", 'a+') as f:
-        f.write("#############################################################################################" + "\n\n")
-    f.close()
-
-    table_4()
 
     with open(f"txt_results/final.txt", 'a+') as f:
         f.write("#############################################################################################" + "\n\n")

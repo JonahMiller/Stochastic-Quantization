@@ -110,7 +110,126 @@ class ELQScheduler(object):
         return nor_gate
 
 
-class SQ_ELQScheduler(object):
+class SQ_ELQScheduler_custom_layer(object):
+    def __init__(self, optimizer, r_steps, prob_type, e_type, strategy="pruning"):
+        if not isinstance(optimizer, Optimizer):
+            raise TypeError("{} is not an Optimizer".format(
+                type(optimizer).__name__))
+        if strategy not in "pruning":
+            raise ValueError("ELQ supports \"pruning\" -inspired weight partitioning")
+        self.optimizer = optimizer
+        self.r_steps = r_steps
+        self.strategy = strategy
+        self.idx = 0
+        self.prob_type = prob_type
+        self.e_type = e_type
+
+        for group in self.optimizer.param_groups:
+            group['alpha'] = []
+            group['Ts'] = []
+            group['diff'] = []
+            group['error'] = []
+            for p in group['params']:
+                if p.requires_grad is False:
+                    group['Ts'].append(0)
+                    continue
+                T = torch.ones_like(p.data).cuda()
+                group['Ts'].append(T)
+                alpha = torch.mean(p.data.abs()) + 0.05*torch.max(p.data.abs())
+                group['alpha'].append(alpha)
+                group['diff'].append(0)
+                group['error'].append(0)
+
+    def state_dict(self):
+        return {key: value for key, value in self.__dict__.items() if key != 'optimizer'}
+
+    def load_state_dict(self, state_dict):
+        self.__dict__.update(state_dict)
+
+    def quantize(self):
+        f = []
+        Q = []
+        for group in self.optimizer.param_groups:
+            for idx, p in enumerate(group['params']):
+                if p.requires_grad is False:
+                    continue
+                if group['weight_bits'] is None:
+                    continue
+                alpha = group['alpha'][idx]
+                fully_quantized = self.quantize_weight(p.data, alpha)
+                group['diff'][idx] = torch.sign(p.data - fully_quantized)
+                e = (p.data - fully_quantized).abs().sum()/p.data.abs().sum()
+                f.append(self.e_func(e))
+                Q.append(fully_quantized)
+                
+        if self.r_steps[self.idx] != 1:
+            f = torch.FloatTensor(f).cuda()
+            pr = self.prob(f)
+            r_it = int(self.r_steps[self.idx]*len(f))
+            index_used = []
+            for _ in range(r_it):
+                p_norm = pr/pr.sum()
+                v = torch.rand(1).cuda()
+                s, j = p_norm[0], 0
+                while s < v and j + 1 < len(p):
+                    j += 1
+                    s += p_norm[j]
+                pr[j] = 0
+                index_used.append(j)
+                
+        count = 0
+        for group in self.optimizer.param_groups:
+            for idx, p in enumerate(group['params']):
+                if p.requires_grad is False:
+                    continue
+                if group['weight_bits'] is None:
+                    continue
+                alpha = group['alpha'][idx]
+                fully_quantized = self.quantize_weight(p.data, alpha)
+                if self.r_steps[self.idx] != 1:
+                    if count not in index_used:
+                        group['Ts'][idx] = torch.zeros_like(p.data)
+                        T = group['Ts'][idx]
+                        p.data = torch.where(T == 0, fully_quantized, p.data)
+                    count += 1
+                else:
+                    group['Ts'][idx] = torch.zeros_like(p.data)
+                    T = group['Ts'][idx]
+                    p.data = torch.where(T == 0, fully_quantized, p.data)
+
+
+    def e_func(self, e):
+        if self.e_type == "one_minus_invert":
+            return 1/e + 10**(-7)
+        elif self.e_type == "default":
+            return e
+
+    def prob(self, f):
+        if self.prob_type == "constant":
+            prob = torch.full(f.size(), 1/f.nelement())
+        elif self.prob_type == "linear":
+            prob = f/f.sum()
+        elif self.prob_type == "softmax":
+            prob = torch.exp(f)/(torch.exp(f).sum())
+        elif self.prob_type == "sigmoid":
+            prob = 1/(1 + torch.exp(-f))
+        
+        if self.e_type == "one_minus_invert":
+            return 1 - prob
+        elif self.e_type == "default":
+            return prob
+
+    def quantize_weight(self, tensor, alpha):
+        a = (tensor > 0.5*alpha).float()
+        b = (tensor < -0.5*alpha).float()
+        return alpha*(a - b)
+
+    def step(self):
+        self.quantize()
+        self.idx += 1
+
+
+class SQ_ELQScheduler_custom_filter(object):
     def __init__(self, optimizer, r_steps, prob_type, e_type, strategy="pruning"):
         if not isinstance(optimizer, Optimizer):
             raise TypeError("{} is not an Optimizer".format(
