@@ -27,11 +27,11 @@ def table_5():
     test(model, quant, prob_type=probs, e_type=es, test_name=name)
             
 if __name__ == "__main__":
-    # table_4()
+    table_4()
 
-    # with open(f"txt_results/final2.txt", 'a+') as f:
-    #     f.write("#############################################################################################" + "\n\n")
-    # f.close()
+    with open(f"txt_results/final2.txt", 'a+') as f:
+        f.write("#############################################################################################" + "\n\n")
+    f.close()
 
     table_5()
 

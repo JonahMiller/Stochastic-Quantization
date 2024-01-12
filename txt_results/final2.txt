@@ -1,0 +1,42 @@
+{'model': 'vgg9', 'quant': 'inq', 'prob_type': 'linear', 'e_type': 'default', 'dataset': 'cifar10', 'final_acc': 78.04, 'total_epoch': 4, 'time': 1.09}
+
+{'model': 'vgg9', 'quant': 'elq', 'prob_type': 'linear', 'e_type': 'default', 'dataset': 'cifar10', 'final_acc': 83.8, 'total_epoch': 4, 'time': 1.65}
+
+{'model': 'resnet20', 'quant': 'inq', 'prob_type': 'linear', 'e_type': 'default', 'dataset': 'cifar10', 'final_acc': 74.9, 'total_epoch': 4, 'time': 1.31}
+
+{'model': 'resnet20', 'quant': 'elq', 'prob_type': 'linear', 'e_type': 'default', 'dataset': 'cifar10', 'final_acc': 67.07, 'total_epoch': 4, 'time': 2.25}
+
+#############################################################################################
+
+{'model': 'vgg9', 'quant': 'sq_elq_custom_filter', 'prob_type': 'constant', 'e_type': 'one_minus_invert', 'dataset': 'cifar10', 'final_acc': 86.46, 'total_epoch': 4, 'time': 0.99}
+
+{'model': 'vgg9', 'quant': 'sq_elq_custom_filter', 'prob_type': 'linear', 'e_type': 'one_minus_invert', 'dataset': 'cifar10', 'final_acc': 86.06, 'total_epoch': 4, 'time': 0.95}
+
+{'model': 'vgg9', 'quant': 'sq_elq_custom_filter', 'prob_type': 'softmax', 'e_type': 'one_minus_invert', 'dataset': 'cifar10', 'final_acc': 86.14, 'total_epoch': 4, 'time': 0.96}
+
+{'model': 'vgg9', 'quant': 'sq_elq_custom_filter', 'prob_type': 'sigmoid', 'e_type': 'one_minus_invert', 'dataset': 'cifar10', 'final_acc': 86.39, 'total_epoch': 4, 'time': 0.97}
+
+{'model': 'vgg9', 'quant': 'sq_elq_custom_filter', 'prob_type': 'constant', 'e_type': 'default', 'dataset': 'cifar10', 'final_acc': 86.47, 'total_epoch': 4, 'time': 0.97}
+
+{'model': 'vgg9', 'quant': 'sq_elq_custom_filter', 'prob_type': 'linear', 'e_type': 'default', 'dataset': 'cifar10', 'final_acc': 86.23, 'total_epoch': 4, 'time': 0.94}
+
+{'model': 'vgg9', 'quant': 'sq_elq_custom_filter', 'prob_type': 'softmax', 'e_type': 'default', 'dataset': 'cifar10', 'final_acc': 86.38, 'total_epoch': 4, 'time': 0.96}
+
+{'model': 'vgg9', 'quant': 'sq_elq_custom_filter', 'prob_type': 'sigmoid', 'e_type': 'default', 'dataset': 'cifar10', 'final_acc': 86.19, 'total_epoch': 4, 'time': 1.01}
+
+{'model': 'vgg9', 'quant': 'sq_elq_custom_layer', 'prob_type': 'constant', 'e_type': 'one_minus_invert', 'dataset': 'cifar10', 'final_acc': 86.29, 'total_epoch': 4, 'time': 0.96}
+
+{'model': 'vgg9', 'quant': 'sq_elq_custom_layer', 'prob_type': 'linear', 'e_type': 'one_minus_invert', 'dataset': 'cifar10', 'final_acc': 86.35, 'total_epoch': 4, 'time': 0.98}
+
+{'model': 'vgg9', 'quant': 'sq_elq_custom_layer', 'prob_type': 'softmax', 'e_type': 'one_minus_invert', 'dataset': 'cifar10', 'final_acc': 86.01, 'total_epoch': 4, 'time': 1.01}
+
+{'model': 'vgg9', 'quant': 'sq_elq_custom_layer', 'prob_type': 'sigmoid', 'e_type': 'one_minus_invert', 'dataset': 'cifar10', 'final_acc': 86.05, 'total_epoch': 4, 'time': 0.97}
+
+{'model': 'vgg9', 'quant': 'sq_elq_custom_layer', 'prob_type': 'constant', 'e_type': 'default', 'dataset': 'cifar10', 'final_acc': 85.88, 'total_epoch': 4, 'time': 0.97}
+
+{'model': 'vgg9', 'quant': 'sq_elq_custom_layer', 'prob_type': 'linear', 'e_type': 'default', 'dataset': 'cifar10', 'final_acc': 86.66, 'total_epoch': 4, 'time': 0.96}
+
+{'model': 'vgg9', 'quant': 'sq_elq_custom_layer', 'prob_type': 'softmax', 'e_type': 'default', 'dataset': 'cifar10', 'final_acc': 86.37, 'total_epoch': 4, 'time': 0.98}
+
+{'model': 'vgg9', 'quant': 'sq_elq_custom_layer', 'prob_type': 'sigmoid', 'e_type': 'default', 'dataset': 'cifar10', 'final_acc': 86.3, 'total_epoch': 4, 'time': 0.95}
+
