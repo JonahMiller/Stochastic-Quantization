@@ -80,6 +80,8 @@ def main():
         quantize = U.SQ_TWN_custom_filter(model, args.prob_type, args.e_type)
     elif args.quant == "ttq":
         quantize = U.TTQ(model)
+    elif args.quant == "sq_ttq_default_layer":
+        quantize = U.SQ_TTQ_default_layer(model, args.prob_type)
     elif args.quant == "sq_ttq_custom_filter":
         quantize = U.SQ_TTQ_custom_filter(model, args.prob_type, args.e_type)
 
@@ -125,12 +127,9 @@ def main():
         else:
             r_it = r[3]
 
-        if args.quant == "ttq" or args.quant == "sq_ttq":
+        if args.quant == "ttq" or args.quant == "sq_ttq_default_layer" or args.quant == "sq_ttq_custom_filter":
             train_ttq(args, epoch_index, train_loader, model, [optimizer, optimizer_sf], criterion, quantize, r_it)
             acc, loss = test_ttq(args, model, test_loader, criterion, quantize, r_it, scaling_factors=optimizer_sf.param_groups[0]['params'])
-        elif args.quant == "elq_twn" or args.quant == "sq_elq_twn":
-            train_elq(args, epoch_index, train_loader, model, optimizer, criterion, quantize, r_it)
-            acc, loss = test_elq(args, model, test_loader, criterion, quantize, r_it)
         else:
             train_standard(args, epoch_index, train_loader, model, optimizer, criterion, quantize, r_it)
             acc, loss = test_standard(args, model, test_loader, criterion, quantize, r_it)
@@ -141,7 +140,7 @@ def main():
         if acc > best_acc:
             best_acc = acc
             best_epoch = epoch_index
-            if args.quant == "ttq" or args.quant == "sq_ttq":
+            if args.quant == "ttq" or args.quant == "sq_ttq_default_layer" or args.quant == "sq_ttq_custom_filter":
                 quantize.Quantization(optimizer_sf.param_groups[0]['params'], r_it)
             else:
                 quantize.Quantization(r_it)

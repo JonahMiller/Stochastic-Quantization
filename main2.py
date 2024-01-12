@@ -21,7 +21,7 @@ def save_model(model, acc, name):
         'acc':acc,
         'state_dict':model.state_dict()
     }
-    torch.save(state, f"trained_models/{name}")
+    torch.save(state, f"trained_models2/{name}")
     print('*** DONE! ***')
 
 def ParseArgs():
@@ -128,7 +128,7 @@ def main():
 
     elapsed = time.time() - start
 
-    save_model(model, acc, f"trained_models2/model_{args.test_name}_{args.quant}_{args.model}_{args.dataset}_{args.e_type}_{args.prob_type}.pkl")
+    save_model(model, acc, f"model_{args.test_name}_{args.quant}_{args.model}_{args.dataset}_{args.e_type}_{args.prob_type}.pkl")
 
     d = {"model": args.model, "quant": args.quant, "prob_type": args.prob_type, 
          "e_type": args.e_type, "dataset": args.dataset,

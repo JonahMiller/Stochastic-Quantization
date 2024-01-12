@@ -914,6 +914,119 @@ class TTQ:
             self.target_modules[index].data.copy_(self.saved_params[index])
 
 
+class SQ_TTQ_default_layer:
+    def __init__(self,model, prob_type):
+        model = model.to(device)
+        count_targets = 0
+        for m in model.modules():
+            if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
+                count_targets += 1
+        self.ternarize_range = np.linspace(0,count_targets-1,count_targets).astype('int').tolist()
+        self.num_of_params = len(self.ternarize_range)
+        self.saved_params = []
+        self.target_modules = []
+        for m in model.modules():
+            if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear):
+                tmp = m.weight.data.clone()
+                self.saved_params.append(tmp) #tensor
+                self.target_modules.append(m.weight) #Parameter
+        self.prob_type = prob_type
+
+    def SQ_TernarizeWeights(self, scaling_factors, r):
+        f = []
+        Q = []
+        for index in range(self.num_of_params):
+            f_temp, Q_temp = self.Ternarize(self.target_modules[index], scaling_factors[index])
+            f.append(f_temp)
+            Q.append(Q_temp)
+        f = torch.FloatTensor(f).cuda()
+        p = self.prob(f)
+        r_it = int(r*self.num_of_params)
+        index_used = []
+        for _ in range(r_it):
+            p_norm = p/p.sum()
+            v = torch.rand(1).cuda()
+            s, j = p_norm[0], 0
+            while s < v and j + 1 < len(p):
+                j += 1
+                s += p_norm[j]
+            p[j] = 0
+            index_used.append(j)
+            self.target_modules[j].data = Q[j].data
+
+    def prob(self, f):
+        if self.prob_type == "constant":
+            prob = torch.full(f.size(), 1/f.nelement())
+        elif self.prob_type == "linear":
+            prob = f/f.sum()
+        elif self.prob_type == "softmax":
+            prob = torch.exp(f)/(torch.exp(f).sum())
+        elif self.prob_type == "sigmoid":
+            prob = 1/(1 + torch.exp(-f))
+        return prob
+
+    def TernarizeWeights(self, scaling_factors):
+        for index in range(self.num_of_params):
+            self.target_modules[index].data = self.No_SQ_Ternarize(self.target_modules[index], scaling_factors[index])
+
+    def No_SQ_Ternarize(self, tensor, sf):
+        t = 0.15
+        delta = t*tensor.abs().max()
+        a = (tensor > delta).float()
+        b = (tensor < -delta).float()
+        return sf[0]*a + (-sf[1]*b)
+
+    def Ternarize(self, tensor, sf):
+        t = 0.15
+        delta = t*tensor.abs().max()
+        a = (tensor > delta).float()
+        b = (tensor < -delta).float()
+        Q = sf[0]*a + (-sf[1]*b)
+        e = (tensor - Q).abs().sum()/tensor.abs().sum()
+        f = 1/e + 10**(-7)
+        return f, Q.to(device)
+    
+    def UpdateGradients(self, quant_tensor, tensor, sf):
+        weight_grad, w_p_grad, w_n_grad = self.GetGrads(quant_tensor.grad, tensor.data, 
+                                                        sf.data[0], sf.data[1], 0.15)
+        
+        tensor.grad = Variable(weight_grad)
+        sf.grad = Variable(torch.FloatTensor([w_p_grad, w_n_grad]).cuda())
+        quant_tensor.grad.data.zero_()
+        return tensor, sf
+
+    def GetGrads(self, quant_tensor_grad, tensor, w_p, w_n, t):
+        delta = t*tensor.abs().max()
+        # masks
+        a = (tensor > delta).float()
+        b = (tensor < -delta).float()
+        c = torch.ones(tensor.size()).cuda() - a - b
+        # scaled tensor grad and grads for scaling factors (w_p, w_n)
+        return w_p*a*quant_tensor_grad + w_n*b*quant_tensor_grad + 1.0*c*quant_tensor_grad,\
+            (a*quant_tensor_grad).sum(), (b*quant_tensor_grad).sum()
+    
+    def SaveWeights(self):
+        for index in range(self.num_of_params):
+            self.saved_params[index].copy_(self.target_modules[index].data)
+
+    def Quantization(self, scaling_factors, r):
+        self.SaveWeights()
+        if r != 1:
+            self.SQ_TernarizeWeights(scaling_factors, r)
+        else:
+            self.TernarizeWeights(scaling_factors)
+    
+    def UpdateGradientsAndRestore(self, scaling_factors):
+        for index in range(self.num_of_params):
+            self.target_modules[index], scaling_factors[index] = self.UpdateGradients(self.target_modules[index],
+                                                                                      self.saved_params[index].data,
+                                                                                      scaling_factors[index])
+    
+    def Restore(self):
+        for index in range(self.num_of_params):
+            self.target_modules[index].data.copy_(self.saved_params[index])
+
+
 class SQ_TTQ_custom_filter:
     def __init__(self,model, prob_type, e_type):
         model = model.to(device)

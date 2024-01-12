@@ -21,4 +21,4 @@ def table_5():
     test(model, quant, prob_type=probs, e_type=es, test_name=name)
             
 if __name__ == "__main__":
-    test()
+    table_5()
