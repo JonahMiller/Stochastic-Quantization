@@ -40,3 +40,4 @@
 
 {'model': 'vgg9', 'quant': 'sq_elq_custom_layer', 'prob_type': 'sigmoid', 'e_type': 'default', 'dataset': 'cifar10', 'final_acc': 86.3, 'total_epoch': 4, 'time': 0.95}
 
+#############################################################################################
