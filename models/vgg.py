@@ -1,4 +1,4 @@
-# https://github.com/seongkyun/pytorch-classifications/blob/master/models/vgg.py
+# Copied from https://github.com/seongkyun/pytorch-classifications/blob/master/models/vgg.py
 
 import torch
 import torch.nn as nn

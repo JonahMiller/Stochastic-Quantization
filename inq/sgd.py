@@ -1,3 +1,5 @@
+# Loosely based on https://github.com/Mxbonn/INQ-pytorch/
+
 import torch
 from torch.optim.optimizer import Optimizer, required
 

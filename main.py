@@ -1,4 +1,4 @@
-# https://github.com/buaabai/Ternary-Weights-Network
+# Loosely based on https://github.com/buaabai/Ternary-Weights-Network
 
 import torch
 import torch.nn as nn

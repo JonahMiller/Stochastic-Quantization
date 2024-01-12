@@ -1,3 +1,5 @@
+# Loosely based on https://github.com/Mxbonn/INQ-pytorch/
+
 import math
 from functools import partial
 

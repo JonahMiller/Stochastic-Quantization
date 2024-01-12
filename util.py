@@ -1,3 +1,5 @@
+# Loosely based on https://github.com/buaabai/Ternary-Weights-Network and https://github.com/TropComplique/trained-ternary-quantization/
+
 import torch
 import torch.nn as nn
 import numpy as np
