@@ -218,32 +218,6 @@ def train_ttq(args, epoch_index, train_loader, model, optimizer_list, criterion,
     print(f"Train Epoch: {epoch_index} took {(time.time() - train_time):.2f} seconds")
 
 
-def train_elq(args, epoch_index, train_loader, model, optimizer, criterion, quantize, r):
-    model.train()
-    train_time = time.time()
-    for batch_idx, (input, label) in enumerate(train_loader):
-
-        input, label = Variable(input).to(device), Variable(label).to(device)
-
-        optimizer.zero_grad(set_to_none=True)
-
-        quantize.Quantization(r=r)
-
-        lr = optimizer.param_groups[-1]['lr']
-        output = model(input)
-        loss = criterion(output, label)
-        loss.backward()
-        
-        quantize.UpdateGradientsAndRestore(lr=lr)
-
-        optimizer.step()
-
-        if batch_idx % args.log_interval == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch_index,  batch_idx * len(input),  len(train_loader.dataset), 
-                100. * batch_idx / len(train_loader),  loss.data))
-    print(f"Train Epoch: {epoch_index} took {(time.time() - train_time):.2f} seconds")
-
 def test_standard(args, model, test_loader, criterion, quantize, r):
     model.eval()
     test_loss = 0
@@ -292,30 +266,6 @@ def test_ttq(args, model, test_loader, criterion, quantize, r, scaling_factors):
     
     return acc, test_loss
 
-
-def test_elq(args, model, test_loader, criterion, quantize, r):
-    model.eval()
-    test_loss = 0
-    correct = 0
-
-    quantize.Quantization(r)
-    for input, label in test_loader:
-
-        input, label = Variable(input).to(device), Variable(label).to(device)
-        output = model(input)
-
-        test_loss += criterion(output, label).data
-        pred = output.data.max(1, keepdim=True)[1]
-        correct += pred.eq(label.data.view_as(pred)).cpu().sum()
-    
-    acc = 100. * correct/len(test_loader.dataset)
-
-    test_loss /= len(test_loader)
-    print('\nTest set: Average loss: {:.4f},  Accuracy: {}/{} ({:.2f}%)\n'.format(
-        test_loss,  correct,  len(test_loader.dataset), 
-        100. * correct / len(test_loader.dataset)))
-    
-    return acc, test_loss
 
 if __name__ == '__main__':
     main()
