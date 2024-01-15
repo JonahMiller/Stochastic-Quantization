@@ -20,7 +20,7 @@ Runs the program with the SQ algorithm defined by the paper.
 
 ## Additional adaptations
 
-I created additional adaptions to run the algorithm in a non-selection manner (ie. pick which layers do not get quantized), this is furthered by an approach which quantizes by filters/elements in a layer, rather than layers in the model. This also has different mechanisms of gaining the probabilities of quantization, which can be seen under *args.e_type* and *args.prob_type*.
+I created additional adaptions to run the algorithm in a non-selection manner (ie. selects which layers do not get quantized), this is furthered by an approach which quantizes by filters/elements in a layer, rather than layers in the model. This also has different mechanisms of gaining the probabilities of quantization, which can be seen under *args.e_type* and *args.prob_type*.
 
 I run a series of tests  with these settings and these can be seen in the test.py file. All models used in my project from here are in the [trained_models](./trained_models/) folder. The accuracy and other details are recorded in [final.txt](./txt_results/final.txt).
 
