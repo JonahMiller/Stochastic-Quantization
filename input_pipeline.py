@@ -19,14 +19,14 @@ def main(dataset):
     if dataset == "cifar10":
         train_loader = torch.utils.data.DataLoader(datasets.CIFAR10('./cifar10_data', 
                                                                     train=True, 
-                                                                    download=False, 
+                                                                    download=True, 
                                                                     transform=transform),  
                                                                     batch_size=BATCH_SIZE, 
                                                                     shuffle=True, 
                                                                     **kwargs)
         test_loader = torch.utils.data.DataLoader(datasets.CIFAR10('./cifar10_data',  
                                                                 train=False,  
-                                                                download=False, 
+                                                                download=True, 
                                                                 transform=transform),  
                                                                 batch_size=TEST_BATCH_SIZE, 
                                                                 shuffle=True, 
@@ -34,14 +34,14 @@ def main(dataset):
     elif dataset == "cifar100":
         train_loader = torch.utils.data.DataLoader(datasets.CIFAR100('./cifar100_data', 
                                                                     train=True, 
-                                                                    download=False, 
+                                                                    download=True, 
                                                                     transform=transform),  
                                                                     batch_size=BATCH_SIZE, 
                                                                     shuffle=True, 
                                                                     **kwargs)
         test_loader = torch.utils.data.DataLoader(datasets.CIFAR100('./cifar100_data',  
                                                                 train=False,  
-                                                                download=False, 
+                                                                download=True, 
                                                                 transform=transform),  
                                                                 batch_size=TEST_BATCH_SIZE, 
                                                                 shuffle=True, 
