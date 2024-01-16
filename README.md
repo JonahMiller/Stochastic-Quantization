@@ -1,4 +1,4 @@
-# L46-Project
+# An Investigation into Stochastic Quantization
 
 Investigation into [Stochastic Quantization](https://arxiv.org/pdf/1708.01001.pdf) (SQ). This for the L46 Module in the Computer Science Part III course at the University of Cambridge.
 
