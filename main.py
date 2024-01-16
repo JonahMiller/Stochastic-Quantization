@@ -4,7 +4,6 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 import torch.optim as optim
-from torchvision import datasets,  transforms, models
 import argparse
 
 import model as M
