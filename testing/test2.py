@@ -1,8 +1,5 @@
 import subprocess
 
-prob_type = ["constant", "linear", "softmax", "sigmoid"]
-e_type = ["one_minus_invert", "default"]
-
 
 def test(model, quant, prob_type=["linear"], e_type=["default"], test_name="default"):
     for i in model:

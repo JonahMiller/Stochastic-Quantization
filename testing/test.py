@@ -1,5 +1,6 @@
 import subprocess
 
+
 def test(model, quant, prob_type=["linear"], e_type=["default"], test_name="default"):
     for i in model:
         for j in quant:
@@ -15,7 +16,6 @@ def test2(model, quant, prob_type=["linear"], e_type=["default"], test_name="def
                 for p in prob_type:
                     subprocess.run(["python", "inq_strats.py", "--model", i, "--quant", j,
                                     "--prob_type", p, "--e_type", e, "--test_name", test_name])
-
 
 def table_1():
     name = "table_1"
@@ -33,7 +33,6 @@ def table_3():
 
 
 if __name__ == "__main__":
-
     table_1()
 
     with open(f"txt_results/final.txt", 'a+') as f:
