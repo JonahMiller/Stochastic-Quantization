@@ -6,7 +6,7 @@ Investigation into [Stochastic Quantization](https://arxiv.org/pdf/1708.01001.pd
 
 This project recreates the stochastic algorithm in PyTorch, and can run on low-bit DNNs: BWN, TWN or TTQ.
 
-There are two model setups: VGG-9 and ResNet-20. However, general VGG and ResNet models can be setup in the model.py. There are differences between the models I use and those in the paper.
+There are two model setups: VGG-9 and ResNet-20. However, general VGG and ResNet models can be setup in the [model.py](./model.py). There are differences between the models I use and those in the paper.
 
 The quantization model adaptions are in the util.py file, and the main.py file runs it. 
 
