@@ -1,6 +1,6 @@
 # L46-Project
 
-Cambridge Computer Science Part III L46 project, based on investigating [Stochastic Quantization](https://arxiv.org/pdf/1708.01001.pdf) (SQ).
+Investigation into [Stochastic Quantization](https://arxiv.org/pdf/1708.01001.pdf) (SQ). This for the L46 Module in the Computer Science Part III course at the University of Cambridge.
 
 ## Stochastic Quantization in PyTorch
 

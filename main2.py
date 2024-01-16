@@ -59,10 +59,10 @@ def main():
     
     if args.model == "vgg9":
         model = M.VGG9(10)
-        model.load_state_dict(torch.load("vgg9_fwn.pkl")["state_dict"])
+        model.load_state_dict(torch.load("_vgg9_fwn.pkl")["state_dict"])
     elif args.model == "resnet20":
         model = M.ResNet20(10)
-        model.load_state_dict(torch.load("resnet20_fwn.pkl")["state_dict"])
+        model.load_state_dict(torch.load("_resnet20_fwn.pkl")["state_dict"])
  
     quantized_parameters = list(chain.from_iterable([[p for n, p in m.named_parameters() if 'weight' in n] for m in model.modules() 
                                                       if isinstance(m,nn.Conv2d) or isinstance(m,nn.Linear)]))
