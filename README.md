@@ -1,6 +1,6 @@
 # An Investigation into Stochastic Quantization
 
-Investigation into [Stochastic Quantization](https://arxiv.org/pdf/1708.01001.pdf) (SQ).
+An attempt to reproduce and improve the results from [Stochastic Quantization](https://arxiv.org/pdf/1708.01001.pdf) (SQ) using PyTorch. The initial repo from the paper is written in Caffe and can be found [here](https://github.com/dongyp13/Stochastic-Quantization/tree/master).
 
 ## Stochastic Quantization in PyTorch
 
@@ -32,4 +32,4 @@ Again a series of tests have been run demonstrating usage in the [test2.py](./te
 
 ## Additional comments
 
-Any code that has either been based on or copied from another project is commented at the top of that page.
+This project was initially done to the L46 module for the Part III Computer Science course at the University of Cambridge. The final report is in the [report.pdf].
